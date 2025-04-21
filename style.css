@@ -1,0 +1,19 @@
+body {
+  font-family: Arial, sans-serif;
+  padding: 20px;
+  max-width: 800px;
+  margin: auto;
+}
+label {
+  display: block;
+  margin-top: 15px;
+  font-weight: bold;
+}
+input, select {
+  width: 100%;
+  padding: 8px;
+  margin-top: 5px;
+}
+.readonly-input {
+  background-color: #f0f0f0;
+}

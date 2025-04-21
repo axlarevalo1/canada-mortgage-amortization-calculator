@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Canada Mortgage Calculator</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <h1>Canada Mortgage Calculator</h1>
+
+  <label for="purchasePrice">Purchase Price ($)</label>
+  <input type="number" id="purchasePrice" value="650000" />
+
+  <label for="downPaymentPercent">Down Payment (%)</label>
+  <select id="downPaymentPercent">
+    <option value="tiered" selected>5% on first $500,000 + 10% on remainder</option>
+    <option value="10">10%</option>
+    <option value="15">15%</option>
+    <option value="20">20%</option>
+    <option value="25">25%</option>
+    <option value="35">35%</option>
+  </select>
+
+  <label for="downPaymentAmount">Down Payment Amount ($)</label>
+  <input type="text" id="downPaymentAmount" class="readonly-input" readonly />
+
+  <label for="mortgageInsurance">Mortgage Default Insurance (CMHC/Sagen/CG) [?]</label>
+  <input type="text" id="mortgageInsurance" class="readonly-input" readonly />
+
+  <label for="interestRate">Interest Rate (%)</label>
+  <input type="number" id="interestRate" value="4.5" />
+
+  <label for="amortization">Amortization Period</label>
+  <select id="amortization">
+    <option value="10">10 years</option>
+    <option value="15">15 years</option>
+    <option value="20">20 years</option>
+    <option value="25">25 years</option>
+    <option value="30" selected>30 years</option>
+  </select>
+
+  <label for="startDate">Start Date</label>
+  <input type="date" id="startDate" value="2025-04-21" />
+
+  <div style="margin-top: 30px;">
+    <strong>Loan Amount:</strong> <span id="loanAmount">$0.00</span><br />
+    <strong>Estimated Monthly Payment:</strong> <span id="monthlyPayment">$0.00</span>
+  </div>
+
+  <div id="amortizationTable" style="margin-top: 40px;"></div>
+
+  <script src="script.js"></script>
+</body>
+</html>
