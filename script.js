@@ -141,3 +141,12 @@ function calculateMortgage() {
       calculateMortgage();
       attachListeners();
     });
+
+function sendHeightToParent() {
+  const height = document.body.scrollHeight;
+  parent.postMessage({ type: 'resize', height: height }, '*');
+}
+
+// Call once on load and again when resizing
+window.addEventListener('load', sendHeightToParent);
+window.addEventListener('resize', sendHeightToParent);
