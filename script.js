@@ -1,58 +1,56 @@
 function updateDownPaymentAndInsurance() {
-      const purchasePrice = parseFloat(document.getElementById('purchasePrice').value);
-      const dpSelect = document.getElementById('downPaymentPercent').value;
-      const dpField = document.getElementById('downPaymentAmount');
-      const insuranceField = document.getElementById('mortgageInsurance');
-      const formatter = new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD' });
+  const purchasePrice = parseFloat(document.getElementById('purchasePrice').value);
+  const dpSelect = document.getElementById('downPaymentPercent').value;
+  const dpField = document.getElementById('downPaymentAmount');
+  const insuranceField = document.getElementById('mortgageInsurance');
+  const formatter = new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD' });
 
-      let downPayment = 0, insuranceRate = 0;
+  let downPayment = 0, insuranceRate = 0;
 
-      if (!isNaN(purchasePrice)) {
-        const first500 = Math.min(purchasePrice, 500000);
-        const remainder = Math.max(0, purchasePrice - 500000);
+  if (!isNaN(purchasePrice)) {
+    const first500 = Math.min(purchasePrice, 500000);
+    const remainder = Math.max(0, purchasePrice - 500000);
 
-        switch (dpSelect) {
-          case 'tiered':
-            downPayment = (first500 * 0.05) + (remainder * 0.10);
-            insuranceRate = 0.04;
-            break;
-          case '10':
-            downPayment = purchasePrice * 0.10;
-            insuranceRate = 0.031;
-            break;
-          case '15':
-            downPayment = purchasePrice * 0.15;
-            insuranceRate = 0.028;
-            break;
-          case '20':
-            downPayment = purchasePrice * 0.20;
-            insuranceRate = 0;
-            break;
-          case '25':
-            downPayment = purchasePrice * 0.25;
-            insuranceRate = 0;
-            break;
-          case '35':
-            downPayment = purchasePrice * 0.35;
-            insuranceRate = 0;
-            break;
-        }
-
-        const mortgageAmount = purchasePrice - downPayment;
-        const insurance = insuranceRate > 0 ? mortgageAmount * insuranceRate : 0;
-
-        dpField.value = formatter.format(downPayment);
-        insuranceField.value = insuranceRate > 0 ? formatter.format(insurance) : 'Not applicable';
-
-        return { downPayment, insurance };
-      }
-
-      dpField.value = '';
-      insuranceField.value = '';
-      return { downPayment: 0, insurance: 0 };
+    switch (dpSelect) {
+      case 'tiered':
+        downPayment = (first500 * 0.05) + (remainder * 0.10);
+        insuranceRate = 0.04;
+        break;
+      case '10':
+        downPayment = purchasePrice * 0.10;
+        insuranceRate = 0.031;
+        break;
+      case '15':
+        downPayment = purchasePrice * 0.15;
+        insuranceRate = 0.028;
+        break;
+      case '20':
+        downPayment = purchasePrice * 0.20;
+        insuranceRate = 0;
+        break;
+      case '25':
+        downPayment = purchasePrice * 0.25;
+        insuranceRate = 0;
+        break;
+      case '35':
+        downPayment = purchasePrice * 0.35;
+        insuranceRate = 0;
+        break;
     }
 
-    
+    const mortgageAmount = purchasePrice - downPayment;
+    const insurance = insuranceRate > 0 ? mortgageAmount * insuranceRate : 0;
+
+    dpField.value = formatter.format(downPayment);
+    insuranceField.value = insuranceRate > 0 ? formatter.format(insurance) : 'Not applicable';
+
+    return { downPayment, insurance };
+  }
+
+  dpField.value = '';
+  insuranceField.value = '';
+  return { downPayment: 0, insurance: 0 };
+}
 
 function generateAmortizationTable(principal, rate, periods, startDate) {
   let tableHTML = "<h2 style='margin-top:40px;'>Amortization Schedule</h2>";
@@ -99,54 +97,48 @@ function generateAmortizationTable(principal, rate, periods, startDate) {
   document.getElementById("amortizationTable").innerHTML = tableHTML;
 }
 
-
 function calculateMortgage() {
+  const purchasePrice = parseFloat(document.getElementById('purchasePrice').value);
+  const interestRate = parseFloat(document.getElementById('interestRate').value) / 100 / 12;
+  const amortizationYears = parseInt(document.getElementById('amortization').value);
+  const payments = amortizationYears * 12;
 
-      const purchasePrice = parseFloat(document.getElementById('purchasePrice').value);
-      const interestRate = parseFloat(document.getElementById('interestRate').value) / 100 / 12;
-      const amortizationYears = parseInt(document.getElementById('amortization').value);
-      const payments = amortizationYears * 12;
+  const formatter = new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD' });
+  const { downPayment, insurance } = updateDownPaymentAndInsurance();
 
-      const formatter = new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD' });
-      const { downPayment, insurance } = updateDownPaymentAndInsurance();
+  if (!purchasePrice || !interestRate) return;
 
-      if (!purchasePrice || !interestRate) return;
+  const loan = purchasePrice - downPayment + insurance;
+  const monthly = loan * interestRate * Math.pow(1 + interestRate, payments) / (Math.pow(1 + interestRate, payments) - 1);
 
-      const loan = purchasePrice - downPayment + insurance;
-      const monthly = loan * interestRate * Math.pow(1 + interestRate, payments) / (Math.pow(1 + interestRate, payments) - 1);
-
-      document.getElementById('loanAmount').textContent = formatter.format(loan);
-      
+  document.getElementById('loanAmount').textContent = formatter.format(loan);
   document.getElementById('monthlyPayment').textContent = formatter.format(monthly);
   generateAmortizationTable(loan, interestRate, payments, document.getElementById('startDate').value);
+}
 
-    }
-
-    function attachListeners() {
-      ['purchasePrice', 'downPaymentPercent', 'interestRate', 'amortization'].forEach(id => {
-        const el = document.getElementById(id);
-        el.addEventListener('input', () => {
-          updateDownPaymentAndInsurance();
-          calculateMortgage();
-        });
-        el.addEventListener('change', () => {
-          updateDownPaymentAndInsurance();
-          calculateMortgage();
-        });
-      });
-    }
-
-    document.addEventListener('DOMContentLoaded', () => {
+function attachListeners() {
+  ['purchasePrice', 'downPaymentPercent', 'interestRate', 'amortization'].forEach(id => {
+    const el = document.getElementById(id);
+    el.addEventListener('input', () => {
       updateDownPaymentAndInsurance();
       calculateMortgage();
-      attachListeners();
     });
+    el.addEventListener('change', () => {
+      updateDownPaymentAndInsurance();
+      calculateMortgage();
+    });
+  });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  updateDownPaymentAndInsurance();
+  calculateMortgage();
+  attachListeners();
+});
 
 function sendHeightToParent() {
   const height = document.body.scrollHeight;
   parent.postMessage({ type: 'resize', height: height }, '*');
 }
-
-// Call once on load and again when resizing
 window.addEventListener('load', sendHeightToParent);
 window.addEventListener('resize', sendHeightToParent);
