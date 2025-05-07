@@ -43,13 +43,13 @@ function updateDownPaymentAndInsurance() {
 
     dpField.value = formatter.format(downPayment);
     insuranceField.value = insuranceRate > 0 ? formatter.format(insurance) : 'Not applicable';
-
-    return { downPayment, insurance };
+  } else {
+    dpField.value = '';
+    insuranceField.value = '';
   }
 
-  dpField.value = '';
-  insuranceField.value = '';
-  return { downPayment: 0, insurance: 0 };
+  // Trigger mortgage calculation immediately
+  calculateMortgage();
 }
 
 function calculateMortgage() {
@@ -82,7 +82,6 @@ function calculateMortgage() {
   const totalCost = monthlyPayment * totalPayments;
   const totalInterest = totalCost - principal;
 
-  // Display Results
   const format = val => val.toLocaleString('en-CA', { style: 'currency', currency: 'CAD' });
   document.getElementById('monthlyPayment').value = format(monthlyPayment || 0);
   document.getElementById('totalInterest').value = format(totalInterest || 0);
@@ -91,55 +90,24 @@ function calculateMortgage() {
   generateAmortizationTable(principal, interestRateInput, totalPayments, startDate, compounding);
 }
 
-function generateAmortizationTable(principal, interestRate, payments, startDate, compounding) {
-  const tableBody = document.getElementById('amortizationTableBody');
-  tableBody.innerHTML = ""; // Clear existing table
-
-  let balance = principal;
-  let monthlyRate = (compounding === "semi-annual") 
-    ? Math.pow(1 + (interestRate / 100) / 2, 2) ** (1 / 12) - 1 
-    : (interestRate / 100) / 12;
-
-  let currentDate = new Date(startDate);
-  for (let i = 1; i <= payments; i++) {
-    const interestPayment = balance * monthlyRate;
-    const principalPayment = Math.min(balance, document.getElementById('monthlyPayment').value.replace(/[^0-9.-]+/g, "") - interestPayment);
-    balance -= principalPayment;
-
-    const row = document.createElement("tr");
-    row.innerHTML = `
-      <td>${i}</td>
-      <td>${currentDate.toLocaleDateString()}</td>
-      <td>${formatCurrency(principalPayment)}</td>
-      <td>${formatCurrency(interestPayment)}</td>
-      <td>${formatCurrency(balance < 0 ? 0 : balance)}</td>
-    `;
-    tableBody.appendChild(row);
-
-    currentDate.setMonth(currentDate.getMonth() + 1);
-  }
-}
-
-function formatCurrency(val) {
-  return val.toLocaleString('en-CA', { style: 'currency', currency: 'CAD' });
-}
-
 function attachListeners() {
-  ['purchasePrice', 'downPaymentPercent', 'interestRate', 'amortization'].forEach(id => {
+  const inputs = ['purchasePrice', 'downPaymentPercent', 'principal', 'interestRate', 'amortization'];
+  inputs.forEach(id => {
     const el = document.getElementById(id);
     el.addEventListener('input', () => {
-      updateDownPaymentAndInsurance();
-      calculateMortgage();
-    });
-    el.addEventListener('change', () => {
-      updateDownPaymentAndInsurance();
-      calculateMortgage();
+      if (id === 'purchasePrice' || id === 'downPaymentPercent') {
+        updateDownPaymentAndInsurance();
+      } else {
+        calculateMortgage();
+      }
     });
   });
+
+  document.getElementById('compoundingToggle').addEventListener('change', calculateMortgage);
+  document.getElementById('startDate').addEventListener('change', calculateMortgage);
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-  updateDownPaymentAndInsurance();
-  calculateMortgage();
   attachListeners();
+  updateDownPaymentAndInsurance();
 });
