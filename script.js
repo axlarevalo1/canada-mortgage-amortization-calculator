@@ -14,7 +14,7 @@ function updateDownPaymentAndInsurance() {
     switch (dpSelect) {
       case 'tiered':
         downPayment = (first500 * 0.05) + (remainder * 0.10);
-        insuranceRate = 0.04;
+        insuranceRate = downPayment < purchasePrice * 0.20 ? 0.04 : 0;
         break;
       case '10':
         downPayment = purchasePrice * 0.10;
@@ -52,68 +52,76 @@ function updateDownPaymentAndInsurance() {
   return { downPayment: 0, insurance: 0 };
 }
 
-function generateAmortizationTable(principal, rate, periods, startDate) {
-  let tableHTML = "<h2 style='margin-top:40px;'>Amortization Schedule</h2>";
-  tableHTML += "<table border='1' cellpadding='5' cellspacing='0' style='border-collapse: collapse; width: 100%; text-align: right;'>";
-  tableHTML += "<tr><th style='text-align:left;'>Month</th><th>Principal</th><th>Interest</th><th>Payment</th><th>Balance</th><th style='text-align:left;'>Date</th></tr>";
+function calculateMortgage() {
+  const principal = parseFloat(document.getElementById('principal').value);
+  const interestRateInput = parseFloat(document.getElementById('interestRate').value);
+  const amortizationYears = parseFloat(document.getElementById('amortization').value);
+  const compounding = document.getElementById('compoundingToggle').value;
+  const startDate = document.getElementById('startDate').value;
 
-  const formatter = new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD' });
-  let balance = principal;
-  let totalInterest = 0;
-  let totalPrincipal = 0;
+  const errorBox = document.getElementById('error');
+  errorBox.textContent = '';
 
-  const monthlyPayment = principal * rate * Math.pow(1 + rate, periods) / (Math.pow(1 + rate, periods) - 1);
-  const start = new Date(startDate);
-
-  for (let i = 1; i <= periods; i++) {
-    if ((i - 1) % 12 === 0) {
-      tableHTML += "<tr><td colspan='6' style='text-align:left; font-weight:bold; background:#f9f9f9;'>Year " + (Math.floor((i - 1) / 12) + 1) + "</td></tr>";
-    }
-
-    const interest = balance * rate;
-    const principalPaid = monthlyPayment - interest;
-    balance -= principalPaid;
-    totalInterest += interest;
-    totalPrincipal += principalPaid;
-
-    const payDate = new Date(start);
-    payDate.setMonth(start.getMonth() + i - 1);
-    const formattedDate = payDate.toISOString().split("T")[0];
-
-    tableHTML += "<tr><td style='text-align:left;'>" + i + "</td>" +
-      "<td>" + formatter.format(principalPaid) + "</td>" +
-      "<td>" + formatter.format(interest) + "</td>" +
-      "<td>" + formatter.format(monthlyPayment) + "</td>" +
-      "<td>" + formatter.format(Math.max(balance, 0)) + "</td>" +
-      "<td style='text-align:left;'>" + formattedDate + "</td></tr>";
+  if (isNaN(principal) || isNaN(interestRateInput) || isNaN(amortizationYears)) {
+    errorBox.textContent = 'Please fill in all fields with valid numbers.';
+    return;
   }
 
-  tableHTML += "<tfoot><tr style='font-weight:bold; background:#f0f0f0;'><td colspan='2'>Totals</td>" +
-    "<td>" + formatter.format(totalInterest) + "</td>" +
-    "<td>" + formatter.format(totalPrincipal + totalInterest) + "</td>" +
-    "<td>" + formatter.format(totalPrincipal) + "</td><td></td></tr></tfoot>";
+  let monthlyRate;
+  if (compounding === "semi-annual") {
+    const semiAnnualRate = Math.pow(1 + (interestRateInput / 100) / 2, 2) - 1;
+    monthlyRate = Math.pow(1 + semiAnnualRate, 1 / 12) - 1;
+  } else {
+    monthlyRate = (interestRateInput / 100) / 12;
+  }
 
-  tableHTML += "</table>";
-  document.getElementById("amortizationTable").innerHTML = tableHTML;
+  const totalPayments = amortizationYears * 12;
+  const monthlyPayment = (principal * monthlyRate) / 
+                         (1 - Math.pow(1 + monthlyRate, -totalPayments));
+
+  const totalCost = monthlyPayment * totalPayments;
+  const totalInterest = totalCost - principal;
+
+  // Display Results
+  const format = val => val.toLocaleString('en-CA', { style: 'currency', currency: 'CAD' });
+  document.getElementById('monthlyPayment').value = format(monthlyPayment || 0);
+  document.getElementById('totalInterest').value = format(totalInterest || 0);
+  document.getElementById('totalCost').value = format(totalCost || 0);
+
+  generateAmortizationTable(principal, interestRateInput, totalPayments, startDate, compounding);
 }
 
-function calculateMortgage() {
-  const purchasePrice = parseFloat(document.getElementById('purchasePrice').value);
-  const interestRate = parseFloat(document.getElementById('interestRate').value) / 100 / 12;
-  const amortizationYears = parseInt(document.getElementById('amortization').value);
-  const payments = amortizationYears * 12;
+function generateAmortizationTable(principal, interestRate, payments, startDate, compounding) {
+  const tableBody = document.getElementById('amortizationTableBody');
+  tableBody.innerHTML = ""; // Clear existing table
 
-  const formatter = new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD' });
-  const { downPayment, insurance } = updateDownPaymentAndInsurance();
+  let balance = principal;
+  let monthlyRate = (compounding === "semi-annual") 
+    ? Math.pow(1 + (interestRate / 100) / 2, 2) ** (1 / 12) - 1 
+    : (interestRate / 100) / 12;
 
-  if (!purchasePrice || !interestRate) return;
+  let currentDate = new Date(startDate);
+  for (let i = 1; i <= payments; i++) {
+    const interestPayment = balance * monthlyRate;
+    const principalPayment = Math.min(balance, document.getElementById('monthlyPayment').value.replace(/[^0-9.-]+/g, "") - interestPayment);
+    balance -= principalPayment;
 
-  const loan = purchasePrice - downPayment + insurance;
-  const monthly = loan * interestRate * Math.pow(1 + interestRate, payments) / (Math.pow(1 + interestRate, payments) - 1);
+    const row = document.createElement("tr");
+    row.innerHTML = `
+      <td>${i}</td>
+      <td>${currentDate.toLocaleDateString()}</td>
+      <td>${formatCurrency(principalPayment)}</td>
+      <td>${formatCurrency(interestPayment)}</td>
+      <td>${formatCurrency(balance < 0 ? 0 : balance)}</td>
+    `;
+    tableBody.appendChild(row);
 
-  document.getElementById('loanAmount').textContent = formatter.format(loan);
-  document.getElementById('monthlyPayment').textContent = formatter.format(monthly);
-  generateAmortizationTable(loan, interestRate, payments, document.getElementById('startDate').value);
+    currentDate.setMonth(currentDate.getMonth() + 1);
+  }
+}
+
+function formatCurrency(val) {
+  return val.toLocaleString('en-CA', { style: 'currency', currency: 'CAD' });
 }
 
 function attachListeners() {
@@ -135,10 +143,3 @@ document.addEventListener('DOMContentLoaded', () => {
   calculateMortgage();
   attachListeners();
 });
-
-function sendHeightToParent() {
-  const height = document.body.scrollHeight;
-  parent.postMessage({ type: 'resize', height: height }, '*');
-}
-window.addEventListener('load', sendHeightToParent);
-window.addEventListener('resize', sendHeightToParent);
