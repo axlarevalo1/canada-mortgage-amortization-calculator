@@ -1,3 +1,4 @@
+// Function to update down payment and insurance
 function updateDownPaymentAndInsurance() {
   const purchasePrice = parseFloat(document.getElementById('purchasePrice').value);
   const dpSelect = document.getElementById('downPaymentPercent').value;
@@ -48,10 +49,10 @@ function updateDownPaymentAndInsurance() {
     insuranceField.value = '';
   }
 
-  // Trigger mortgage calculation immediately
   calculateMortgage();
 }
 
+// Function to calculate mortgage
 function calculateMortgage() {
   const principal = parseFloat(document.getElementById('principal').value);
   const interestRateInput = parseFloat(document.getElementById('interestRate').value);
@@ -87,27 +88,68 @@ function calculateMortgage() {
   document.getElementById('totalInterest').value = format(totalInterest || 0);
   document.getElementById('totalCost').value = format(totalCost || 0);
 
-  generateAmortizationTable(principal, interestRateInput, totalPayments, startDate, compounding);
+  generateAmortizationTable(principal, interestRateInput, totalPayments, startDate, compounding, monthlyPayment);
 }
 
-function attachListeners() {
-  const inputs = ['purchasePrice', 'downPaymentPercent', 'principal', 'interestRate', 'amortization'];
-  inputs.forEach(id => {
-    const el = document.getElementById(id);
-    el.addEventListener('input', () => {
-      if (id === 'purchasePrice' || id === 'downPaymentPercent') {
-        updateDownPaymentAndInsurance();
-      } else {
-        calculateMortgage();
-      }
-    });
-  });
+// Function to generate amortization table
+function generateAmortizationTable(principal, interestRate, payments, startDate, compounding, monthlyPayment) {
+  const tableBody = document.getElementById('amortizationTableBody');
+  tableBody.innerHTML = ""; // Clear existing table
 
+  let balance = principal;
+  let monthlyRate = (compounding === "semi-annual") 
+    ? Math.pow(1 + (interestRate / 100) / 2, 2) ** (1 / 12) - 1 
+    : (interestRate / 100) / 12;
+
+  let totalInterest = 0;
+  let currentDate = new Date(startDate);
+
+  for (let i = 1; i <= payments; i++) {
+    const interestPayment = balance * monthlyRate;
+    const principalPayment = Math.min(balance, monthlyPayment - interestPayment);
+    balance -= principalPayment;
+    totalInterest += interestPayment;
+
+    // Prevent negative balance
+    if (balance < 0) balance = 0;
+
+    const row = document.createElement("tr");
+    row.innerHTML = `
+      <td>${i}</td>
+      <td>${currentDate.toLocaleDateString()}</td>
+      <td>${formatCurrency(principalPayment)}</td>
+      <td>${formatCurrency(interestPayment)}</td>
+      <td>${formatCurrency(balance)}</td>
+    `;
+    tableBody.appendChild(row);
+
+    currentDate.setMonth(currentDate.getMonth() + 1);
+  }
+
+  // Final total row
+  const totalRow = document.createElement("tr");
+  totalRow.innerHTML = `
+    <td colspan="2"><strong>Total</strong></td>
+    <td><strong>${formatCurrency(principal)}</strong></td>
+    <td><strong>${formatCurrency(totalInterest)}</strong></td>
+    <td><strong>-</strong></td>
+  `;
+  tableBody.appendChild(totalRow);
+}
+
+// Currency formatting function
+function formatCurrency(val) {
+  return val.toLocaleString('en-CA', { style: 'currency', currency: 'CAD' });
+}
+
+// Attaching listeners for real-time calculation
+document.addEventListener('DOMContentLoaded', () => {
+  ['purchasePrice', 'downPaymentPercent', 'principal', 'interestRate', 'amortization'].forEach(id => {
+    const el = document.getElementById(id);
+    el.addEventListener('input', updateDownPaymentAndInsurance);
+  });
   document.getElementById('compoundingToggle').addEventListener('change', calculateMortgage);
   document.getElementById('startDate').addEventListener('change', calculateMortgage);
-}
 
-document.addEventListener('DOMContentLoaded', () => {
-  attachListeners();
   updateDownPaymentAndInsurance();
 });
